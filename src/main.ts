@@ -1,6 +1,12 @@
 import { vec3 } from "wgpu-matrix";
 import { Camera } from "./Camera";
-import { captureKeyboard, isKeyDown } from "./InputHandler";
+import {
+  captureKeyboard,
+  captureMouse,
+  getMouseDelta,
+  isKeyDown,
+  updateInput,
+} from "./InputHandler";
 import Renderer from "./rendering/Renderer";
 
 async function run() {
@@ -9,6 +15,7 @@ async function run() {
 
   camera.position = [8, 2, -2];
   captureKeyboard(document.body);
+  captureMouse(document.body);
 
   function frame() {
     const delta = 1;
@@ -40,25 +47,13 @@ async function run() {
       );
     }
 
-    if (isKeyDown("q")) {
-      camera.rotateY(1);
-    }
-
-    if (isKeyDown("e")) {
-      camera.rotateY(-1);
-    }
-
-    if (isKeyDown("z")) {
-      camera.rotateX(-1);
-    }
-
-    if (isKeyDown("x")) {
-      camera.rotateX(1);
-    }
+    camera.rotateX(-getMouseDelta()[1] / 10);
+    camera.rotateY(-getMouseDelta()[0] / 10);
 
     renderer.render(camera);
 
     requestAnimationFrame(frame);
+    updateInput();
   }
 
   frame();
