@@ -8,12 +8,16 @@ import {
   updateInput,
 } from "./InputHandler";
 import Renderer from "./rendering/Renderer";
+import World from "./world/World";
 
 async function run() {
   const renderer = await Renderer.createRenderer();
   const camera = new Camera();
+  const world = new World();
+  world.populateBlocks();
+  world.buildChunks(renderer);
 
-  camera.position = [8, 2, -2];
+  camera.position = [16, 8, 16];
   captureKeyboard(document.body);
   captureMouse(document.body);
 

@@ -1,10 +1,21 @@
 import Renderer from "../Renderer";
 import chunkShader from "../../res/shaders/chunkShader.wgsl?raw";
-import {
-  ChunkData,
-  buildChunkVertexArray,
-  testChunkData,
-} from "../ChunkBuilder";
+
+import { Vec2, Vec3, mat4, vec3 } from "wgpu-matrix";
+import { CHUNK_SIZE } from "../../world/Chunk";
+
+export type ChunkMeshData = {
+  vertices: {
+    position: Vec3;
+    uv: Vec2;
+    texIndex: number;
+  }[];
+};
+
+export type ChunkMesh = {
+  buffer: GPUBuffer;
+  numVertex: number;
+};
 
 export default class ChunkPass {
   renderer: Renderer;
@@ -21,13 +32,12 @@ export default class ChunkPass {
     ],
   };
 
-  chunkBuffer: GPUBuffer;
+  chunksToDraw: { mesh: ChunkMesh }[] = [];
 
   constructor(renderer: Renderer) {
     this.renderer = renderer;
 
     const { device, canvasFormat } = renderer;
-
     this.shaderModule = device.createShaderModule({
       label: "Chunk Shader",
       code: chunkShader,
@@ -56,12 +66,12 @@ export default class ChunkPass {
         frontFace: "ccw",
       },
     });
-
-    this.chunkBuffer = this.createChunk(testChunkData());
   }
 
   renderPass(encoder: GPUCommandEncoder) {
-    const { context, device, globalData, depthTexture } = this.renderer;
+    const { context, depthTexture, device, globalData, textures } =
+      this.renderer;
+    const { atlas } = textures;
 
     const renderPassDescriptor: GPURenderPassDescriptor = {
       label: "our basic canvas renderPass",
@@ -81,30 +91,50 @@ export default class ChunkPass {
       },
     };
 
+    const bindGroup = device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: globalData } },
+        { binding: 1, resource: atlas.sampler },
+        {
+          binding: 2,
+          resource: atlas.texture.createView({ dimension: "2d-array" }),
+        },
+      ],
+    });
+
     const pass = encoder.beginRenderPass(renderPassDescriptor);
 
     pass.setPipeline(this.pipeline);
 
-    const bindGroup = device.createBindGroup({
-      layout: this.pipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer: globalData } }],
-    });
-
     pass.setBindGroup(0, bindGroup);
-    pass.setVertexBuffer(0, this.chunkBuffer);
-    pass.draw(this.chunkBuffer.size / (6 * 4)); // call our vertex shader 3 times
+
+    this.chunksToDraw.forEach(({ mesh }) => {
+      pass.setVertexBuffer(0, mesh.buffer);
+      pass.draw(mesh.numVertex);
+    });
     pass.end();
   }
 
-  private createChunk(data: ChunkData): GPUBuffer {
-    const vertexData = buildChunkVertexArray(data);
-    const vertexBuffer = this.renderer.device.createBuffer({
+  public generateChunk(chunk: ChunkMeshData): ChunkMesh {
+    const stride = 3 + 2 + 1;
+
+    const size = chunk.vertices.length * stride;
+    const bufferData = new Float32Array(size);
+    for (let i = 0; i < chunk.vertices.length; i++) {
+      const { position, uv, texIndex } = chunk.vertices[i];
+      bufferData.set(position, i * stride);
+      bufferData.set(uv, i * stride + 3);
+      bufferData.set([texIndex], i * stride + 5);
+    }
+
+    const buffer = this.renderer.device.createBuffer({
       label: "Chunk buffer",
-      size: vertexData.byteLength,
+      size: bufferData.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
-    this.renderer.device.queue.writeBuffer(vertexBuffer, 0, vertexData);
+    this.renderer.device.queue.writeBuffer(buffer, 0, bufferData);
 
-    return vertexBuffer;
+    return { buffer, numVertex: chunk.vertices.length };
   }
 }

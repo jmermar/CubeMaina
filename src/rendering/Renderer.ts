@@ -1,6 +1,18 @@
-import { Vec3, mat4, vec3 } from "wgpu-matrix";
+import { mat4, vec3 } from "wgpu-matrix";
+
+import blocks from "../res/textures/blocks.png";
 import ChunkPass from "./passes/ChunkPass";
 import { Camera } from "../Camera";
+import { loadImage } from "../utils/ImageLoader";
+import Chunk from "../world/Chunk";
+import { buildChunkMeshData } from "../utils/ChunkBuilder";
+import World from "../world/World";
+
+export type Texture = {
+  texture: GPUTexture;
+  sampler: GPUSampler;
+};
+
 export default class Renderer {
   adapter: GPUAdapter;
   device: GPUDevice;
@@ -14,6 +26,8 @@ export default class Renderer {
   chunkPass: ChunkPass;
 
   depthTexture: GPUTexture;
+
+  textures: { [name: string]: Texture } = {};
 
   private resize(newW: number, newH: number, canvas: HTMLCanvasElement) {
     const width = newW;
@@ -139,6 +153,47 @@ export default class Renderer {
       throw new Error("Cannot init webgpu device");
     }
 
-    return new Renderer(adapter, device);
+    const renderer = new Renderer(adapter, device);
+    await renderer.loadTextures();
+
+    return renderer;
+  }
+
+  private async loadTextures() {
+    this.textures["atlas"] = await this.generateTextureAtlas();
+  }
+
+  private async generateTextureAtlas(): Promise<Texture> {
+    const bitmap = await loadImage(blocks);
+
+    const numTexs = Math.floor(bitmap.height / 16);
+
+    const texture = this.device.createTexture({
+      label: "Texture atlas",
+      format: "rgba8unorm",
+      size: [16, 16, numTexs],
+      dimension: "2d",
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    for (let i = 0; i < numTexs; i++) {
+      this.device.queue.copyExternalImageToTexture(
+        { source: bitmap, flipY: true, origin: { x: 0, y: i * 16 } },
+        { texture, origin: [0, 0, i] },
+        { width: bitmap.width, height: 16 }
+      );
+    }
+
+    return { texture, sampler: this.device.createSampler() };
+  }
+
+  public addChunk(chunk: Chunk, world: World) {
+    const data = buildChunkMeshData(chunk, world);
+    if (data.vertices.length == 0) return;
+    const mesh = this.chunkPass.generateChunk(data);
+    this.chunkPass.chunksToDraw.push({ mesh });
   }
 }
