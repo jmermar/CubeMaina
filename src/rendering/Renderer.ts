@@ -181,7 +181,7 @@ export default class Renderer {
 
     for (let i = 0; i < numTexs; i++) {
       this.device.queue.copyExternalImageToTexture(
-        { source: bitmap, flipY: true, origin: { x: 0, y: i * 16 } },
+        { source: bitmap, origin: { x: 0, y: i * 16 } },
         { texture, origin: [0, 0, i] },
         { width: bitmap.width, height: 16 }
       );

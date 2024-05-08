@@ -2,6 +2,7 @@ import { Vec2, Vec3, vec3 } from "wgpu-matrix";
 import { ChunkMeshData } from "../rendering/passes/ChunkPass";
 import Chunk from "../world/Chunk";
 import World from "../world/World";
+import { blocks } from "../data/BlockData";
 
 export const ChunkSize = 32;
 
@@ -71,6 +72,8 @@ export function buildChunkMeshData(chunk: Chunk, world: World): ChunkMeshData {
           z + chunk.position[2] * ChunkSize,
         ];
         const chunkId = world.getBlock(wx, wy, wz);
+        if (chunkId == 0) continue;
+        const { textures } = blocks[chunkId - 1];
 
         function buildIfVisible(
           adjacent: number[],
@@ -87,33 +90,33 @@ export function buildChunkMeshData(chunk: Chunk, world: World): ChunkMeshData {
             ...ret.vertices,
             //Top
             ...buildIfVisible(
-              [wx, wy - 1, wz],
-              [[wx, wy + 1, wz], [1, 0, 0], [0, 0, 1], texId]
+              [wx, wy + 1, wz],
+              [[wx, wy + 1, wz], [1, 0, 0], [0, 0, 1], textures[0]]
             ),
             //Bottom
             ...buildIfVisible(
-              [wx, wy + 1, wz],
-              [[wx + 1, wy, wz], [-1, 0, 0], [0, 0, 1], texId + 1]
+              [wx, wy - 1, wz],
+              [[wx + 1, wy, wz], [-1, 0, 0], [0, 0, 1], textures[1]]
             ),
             //Front
             ...buildIfVisible(
               [wx, wy, wz - 1],
-              [[wx + 1, wy + 1, wz], [-1, 0, 0], [0, -1, 0], texId + 2]
+              [[wx + 1, wy + 1, wz], [-1, 0, 0], [0, -1, 0], textures[2]]
             ),
             //Back
             ...buildIfVisible(
               [wx, wy, wz + 1],
-              [[wx, wy + 1, wz + 1], [1, 0, 0], [0, -1, 0], texId + 3]
+              [[wx, wy + 1, wz + 1], [1, 0, 0], [0, -1, 0], textures[3]]
             ),
             //Left
             ...buildIfVisible(
               [wx - 1, wy, wz],
-              [[wx, wy + 1, wz], [0, 0, 1], [0, -1, 0], texId + 4]
+              [[wx, wy + 1, wz], [0, 0, 1], [0, -1, 0], textures[4]]
             ),
             //Right
             ...buildIfVisible(
               [wx + 1, wy, wz],
-              [[wx + 1, wy + 1, wz + 1], [0, 0, -1], [0, -1, 0], texId + 4]
+              [[wx + 1, wy + 1, wz + 1], [0, 0, -1], [0, -1, 0], textures[5]]
             ),
           ];
         }

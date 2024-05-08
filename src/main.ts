@@ -17,37 +17,37 @@ async function run() {
   world.populateBlocks();
   world.buildChunks(renderer);
 
-  camera.position = [16, 8, 16];
+  camera.position = [16, 35, 16];
   captureKeyboard(document.body);
   captureMouse(document.body);
 
   function frame() {
-    const delta = 1;
+    const delta = 0.1;
     if (isKeyDown("w")) {
-      camera.position = vec3.mulScalar(
-        vec3.add(camera.position, camera.forward),
-        delta
+      camera.position = vec3.add(
+        camera.position,
+        vec3.mulScalar(camera.forward, delta)
       );
     }
 
     if (isKeyDown("s")) {
-      camera.position = vec3.mulScalar(
-        vec3.sub(camera.position, camera.forward),
-        delta
+      camera.position = vec3.sub(
+        camera.position,
+        vec3.mulScalar(camera.forward, delta)
       );
     }
 
     if (isKeyDown("a")) {
-      camera.position = vec3.mulScalar(
-        vec3.add(camera.position, vec3.cross([0, 1, 0], camera.forward)),
-        delta
+      camera.position = vec3.add(
+        camera.position,
+        vec3.mulScalar(vec3.cross([0, 1, 0], camera.forward), delta)
       );
     }
 
     if (isKeyDown("d")) {
-      camera.position = vec3.mulScalar(
-        vec3.sub(camera.position, vec3.cross([0, 1, 0], camera.forward)),
-        delta
+      camera.position = vec3.sub(
+        camera.position,
+        vec3.mulScalar(vec3.cross([0, 1, 0], camera.forward), delta)
       );
     }
 
